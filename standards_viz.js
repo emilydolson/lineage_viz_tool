@@ -5,7 +5,7 @@ function change_color() {
     console.log(color_col);
 
     if (color_col == "") {
-        color_col="ID";
+        color_col="id";
     }
 
     var max = d3.max(data, function(d) { return d[color_col]; } );
@@ -17,13 +17,13 @@ function change_color() {
 function make_viz(filename) {
     var svg = d3.select("#viz");
     data = d3.csvParse(filename);
-    data.push({"ID":-1, "ancestors":"[null]"}); 
+    data.push({"id":-1, "ancestor_list":"[null]"}); 
     // console.log(data);
 
 
     var strat_data = d3.stratify()
-    .id(function(d) { return d.ID; })
-    .parentId(function(d) { var a = JSON.parse(d.ancestors); return a[0]; })
+    .id(function(d) { return d.id; })
+    .parentId(function(d) { var a = JSON.parse(d.ancestor_list); return a[0]; })
     (data);
     // console.log(strat_data);
     var root = d3.hierarchy(strat_data);
