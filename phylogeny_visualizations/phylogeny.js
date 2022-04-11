@@ -10,6 +10,8 @@ var scale_range;
 var rect_opacity = 1;
 var branch_color;
 var node_color;
+var max_update = 20000;
+var offsets_calced = false;
 const svg = d3.select("svg");
 
 // handle upload button
@@ -43,6 +45,10 @@ function set_rect_opacity() {
 
 $("#show_rects").on("input change", function() {
     set_rect_opacity();
+
+    if (!offsets_calced) {
+        CalcOffsets(root);
+    }
 
     d3.selectAll(".taxon_rect")
       .style("fill-opacity", rect_opacity)
@@ -91,8 +97,9 @@ function update_tree() {
     svg.selectAll("rect")
         .attr("width", function(d) {
             var end = d.data.destruction_time;
-            if (end == 5000) {
+            if (end == "end") {
                 extant[d.id] = d;
+                end = max_update;
             }
             return age_scale(end) - d.y;
         })
@@ -210,11 +217,12 @@ function Tree(data, { // data is either tabular (array of objects) or hierarchy 
     axis_space = 20
   } = {}) {
   
-    age_scale = d3.scalePow().exponent(10).domain([0,5000]).range([padding, width - 2*padding]);
+    age_scale = d3.scalePow().exponent(10).domain([0,max_update]).range([padding, width - 2*padding]);
     scale_range = age_scale.range();
+    new_ticks = [age_scale.invert(scale_range[0]), age_scale.invert((scale_range[1] - scale_range[0])*.25 + scale_range[0]), age_scale.invert((scale_range[1] - scale_range[0])*.5 + scale_range[0]), age_scale.invert((scale_range[1] - scale_range[0])*.75 + scale_range[0]), age_scale.invert(scale_range[1])];
     axis = d3.axisTop(age_scale)
             //  .ticks(3);       
-             .tickValues([0, 4000, 4500, 4750, 5000]);
+             .tickValues(new_ticks);
     // If id and parentId options are specified, or the path option, use d3.stratify
     // to convert tabular data to a hierarchy; otherwise we assume that the data is
     // specified as an object {children} with nested objects (a.k.a. the “flare.json”
@@ -234,7 +242,10 @@ function Tree(data, { // data is either tabular (array of objects) or hierarchy 
     const dx = 10 + axis_space;
     const dy = width / (root.height + padding);
     // tree().nodeSize([dx, dy])(root);
-    tree().size([height - 2*padding - axis_space, 1])(root);
+    function separation(a, b) {
+        return (a.parent == b.parent ? 1 : 10);
+    }
+    tree().size([height - 2*padding - axis_space, 1]).separation(separation)(root);
     // tree()(root);
 
     // Center the tree.
@@ -246,8 +257,10 @@ function Tree(data, { // data is either tabular (array of objects) or hierarchy 
       //   console.log(d.y, d.data.origin_time, age_scale(d.data.origin_time));
       d.y = age_scale(d.data.origin_time);
     });
-
-    CalcOffsets(root);
+    if (rect_opacity == 1) {
+        offsets_calced = true;
+        CalcOffsets(root);
+    }
 
     // Compute the default height.
     if (height === undefined) height = x1 - x0 + dx * 2 + axis_space;
@@ -288,14 +301,15 @@ function Tree(data, { // data is either tabular (array of objects) or hierarchy 
         // .attr("height", function(d) {
         //     var end = d.data.destruction_time;
         //     if (isNaN(end)) {
-        //         end = 5000;
+        //         end = max_update;
         //     }
         //     return age_scale(end) - d.y;
         // })
         .attr("width", function(d) {
             var end = d.data.destruction_time;
-            if (end == 5000) {
+            if (end == "end") {
                 extant[d.id] = d;
+                end = max_update;
             }
             return age_scale(end) - d.y;
         })
@@ -309,7 +323,7 @@ function Tree(data, { // data is either tabular (array of objects) or hierarchy 
 
     node.append("circle")
         .attr("fill", fill)
-        .attr("r", function(d){return d.data.destruction_time == 5000 ? 2 : 0;})
+        .attr("r", function(d){return d.data.destruction_time == "end" ? 2 : 0;})
         .classed("phylo_node", true)
         .on("click", handle_click);
 
@@ -347,11 +361,21 @@ function make_viz(filename) {
 
     data = d3.csvParse(filename,
         function(d) {
+            var parent = d.ancestor_list == "[NONE]" ? null : JSON.parse(d.ancestor_list)[0];
+            if (parent == "NONE") {
+                parent = null;
+            }
+            if (+d.origin_time > max_update) {
+                max_update = +d.origin_time;
+            }
+            if (+d.destruction_time > max_update) {
+                max_update = +d.destruction_time;
+            }
             return {
                 id: d.id,
-                parentId: d.ancestor_list == "[NONE]" ? null : JSON.parse(d.ancestor_list)[0],
+                parentId: parent,
                 origin_time: +d.origin_time,
-                destruction_time: isNaN(+d.destruction_time) ? 5000 : +d.destruction_time
+                destruction_time: isNaN(+d.destruction_time) ? "end" : +d.destruction_time
             };
         }
     )
