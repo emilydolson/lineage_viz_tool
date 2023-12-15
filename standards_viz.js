@@ -18,12 +18,12 @@ function make_viz(filename) {
     var svg = d3.select("#viz");
     data = d3.csvParse(filename);
     data.push({"id":-1, "ancestor_list":"[null]"}); 
-    // console.log(data);
+    console.log(data);
 
 
     var strat_data = d3.stratify()
     .id(function(d) { return d.id; })
-    .parentId(function(d) { var a = JSON.parse(d.ancestor_list); return a[0]; })
+    .parentId(function(d) { if(d.ancestor_list.toLowerCase() == "[none]" || d.ancestor_list.toLowerCase() == '["none"]') {return -1} var a = JSON.parse(d.ancestor_list); return a[0]; })
     (data);
     // console.log(strat_data);
     var root = d3.hierarchy(strat_data);
