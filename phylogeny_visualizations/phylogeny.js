@@ -361,7 +361,7 @@ function make_viz(filename) {
 
     data = d3.csvParse(filename,
         function(d) {
-            var parent = d.ancestor_list == "[NONE]" ? null : JSON.parse(d.ancestor_list)[0];
+            var parent = d.ancestor_list.toLowerCase().replace('"', '') == "[none]" ? null : JSON.parse(d.ancestor_list)[0];
             if (parent == "NONE") {
                 parent = null;
             }
