@@ -5,18 +5,28 @@ var root;
 var color_scale = d3.scaleOrdinal(d3.schemeCategory10);
 var strokeWidth = 5;
 var axis;
-var axis_g;
+const svg = d3.select("svg");
+const axis_g = svg.append("g");
+const phylo_area = svg.append("g");
 var scale_range;
 var rect_opacity = 1;
 var branch_color;
 var node_color;
 var max_update = 20000;
 var offsets_calced = false;
-const svg = d3.select("svg");
+
+
+function clear() {
+    axis_g.selectAll("*").remove();
+    // axis_g.selectAll(".domain").remove();
+    d3.selectAll(".phylo_node").remove();
+    phylo_area.selectAll("g").remove();
+}
 
 // handle upload button
 // from http://bl.ocks.org/syntagmatic/raw/3299303/
 function upload_button(el, callback) {
+    // d3.selectAll(".phylo_node").remove();
     var uploader = document.getElementById(el);  
     var reader = new FileReader();
   
@@ -32,6 +42,7 @@ function upload_button(el, callback) {
       var file = this.files[0];
       reader.readAsText(file);
     };
+
 };
 
 function set_rect_opacity() {
@@ -272,7 +283,7 @@ function Tree(data, { // data is either tabular (array of objects) or hierarchy 
         .attr("font-family", "sans-serif")
         .attr("font-size", 10);
 
-    svg.append("g")
+    phylo_area
         .attr("fill", "none")
         .attr("stroke", stroke)
         .attr("stroke-opacity", strokeOpacity)
@@ -342,9 +353,8 @@ function Tree(data, { // data is either tabular (array of objects) or hierarchy 
         .attr("stroke-width", haloWidth);
     // console.log(extant);
 
-    axis_g = svg.append("g")
-       .attr("transform", "translate(0,"+ (x0 - dx + axis_space) + ")")
-       .call(axis);
+    axis_g.attr("transform", "translate(0,"+ (x0 - dx + axis_space) + ")")
+          .call(axis);
 
     svg.append("text")
         .attr("transform", "translate(" + width/2 + ","+ (x0 - dx + axis_space) + ")")
@@ -358,6 +368,7 @@ function Tree(data, { // data is either tabular (array of objects) or hierarchy 
 
 
 function make_viz(filename) {
+    clear();
 
     data = d3.csvParse(filename,
         function(d) {
